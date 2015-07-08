@@ -703,7 +703,7 @@
 
                     // To prevent error when stylename is undefined:
                     if(listStyles[styleName] === undefined)
-                        listStyles[styleName] = {};
+                        listStyles[styleName] = /**@type{!odf.StyleTreeNode}*/({});
 
                     contentRules = getAllContentRules(listStyles[styleName].element);
 
