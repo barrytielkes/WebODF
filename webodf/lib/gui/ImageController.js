@@ -288,6 +288,7 @@ gui.ImageController = function ImageController(
         var paragraphElement,
             styleName,
             pageContentSize,
+            pixelToCmDivider = 37.8,
             imageSize;
 
         runtime.assert(widthInPx > 0 && heightInPx > 0, "Both width and height of the image should be greater than 0px.");
@@ -305,7 +306,6 @@ gui.ImageController = function ImageController(
         }
 
         // convert size to cm, so when doc is opend in openoffice the size will be retained:
-        var pixelToCmDivider = 37.8;
         insertImageInternal(mimetype, content, (imageSize.width / pixelToCmDivider) + "cm", (imageSize.height / pixelToCmDivider) + "cm");
     };
 
