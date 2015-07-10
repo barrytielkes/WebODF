@@ -953,7 +953,7 @@ ops.OdtDocument = function OdtDocument(odfCanvas) {
         eventNotifier.subscribe(ops.OdtDocument.signalOperationEnd, handleOperationExecuted);
         eventNotifier.subscribe(ops.OdtDocument.signalProcessingBatchEnd, core.Task.processTasks);
 
-        odfCanvas.getElement().classList.add("documentCanvas");
+        odfCanvas.getElement().classList.add("document-canvas");
     }
     init();
 };
