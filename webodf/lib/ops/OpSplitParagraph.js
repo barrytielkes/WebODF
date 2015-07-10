@@ -90,13 +90,13 @@ ops.OpSplitParagraph = function OpSplitParagraph() {
         }
 
         if (odfUtils.isListItem(paragraphNode.parentNode)) {
-            if(paragraphNode.childNodes.length <= 3) { // list-item is empty check.
-                // enter is pressed on a empty list-item. So we close the list by removing the last list-item, and place the empty paragraph after the list. 
-                listItem = paragraphNode.parentNode;
-                listItem.parentNode.parentNode.insertBefore(paragraphNode, listItem.parentNode.nextSibling);
-                listItem.parentNode.removeChild(listItem);
-                return false;
-            }
+            if(paragraphNode.children.length === 2 && paragraphNode.childNodes.length === 3) { // list-item is empty check.
++                // enter is pressed on a empty list-item. So we close the list by removing the last list-item, and place the empty paragraph after the list. 
++                var listItem = paragraphNode.parentNode;
++                listItem.parentNode.parentNode.insertBefore(paragraphNode, listItem.parentNode.nextSibling);
++                listItem.parentNode.removeChild(listItem);
++                return false;
++            }
             // create a new list-item:
             targetNode = paragraphNode.parentNode;
         } else {
