@@ -160,7 +160,6 @@ gui.BulletlistController = function BulletlistController(
 }
 
 /**@const*/gui.BulletlistController.enabledChanged = "enabled/changed";
-/**@var*/gui.BulletlistController.memberid = null;
 
 /**
  * @param {!ops.OdtDocument} odtDocument
@@ -181,17 +180,33 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
     rule += '   margin-left: 0.635cm;';
     rule += '   padding-right: 0.2cm;';
     rule += '}';
-
     styleSheet.insertRule(rule, styleSheet.cssRules.length);
+
+    var styleTree = new odf.StyleTree(odtDocument.getOdfCanvas().odfContainer().rootElement.styles, odtDocument.getOdfCanvas().odfContainer().rootElement.automaticStyles).getStyleTree(),
+        lists = /**@type{Array}*/(styleTree["list"]),
+        listStyles = {}, // to store whitch styles are there and what there highest number is. number and bullet L1, L2, L3,... So {number: 2, bullet: 1}
+        listStyleNumber,
+        newListStyleName;
+
+    for(var key in lists) {
+        listStyleNumber = Number(key.substr(1));
+        var name = /**@type{String}*/(lists[key]['element']['firstChild']['nodeName']);
+        name = name.substr(name.lastIndexOf('-') + 1);
+
+        if(!listStyles[name] || listStyles[name] < listStyleNumber) { // to make sure that the highest number is stored:
+            listStyles[name] = listStyleNumber;
+        }
+    }
 
     if(memberId === undefined) {
         memberId = 'localuser';
     }
 
-    if(!/**@type{ops.OdtDocument}*/(odtDocument).getOdfCanvas().getFormatting().getStyleElement("L1", "list-style")) {
-
+    if(!listStyles['bullet']) {
+        // create bulletlist style in automaticStyles:
+        newListStyleName = 'L'+ (listStyleNumber + 1);
         var listStyle = ownerDocument.createElementNS(odf.Namespaces.textns, "text:list-style");
-        listStyle.setAttributeNS(odf.Namespaces.stylens, "style:name", "L1");
+        listStyle.setAttributeNS(odf.Namespaces.stylens, "style:name", newListStyleName);
 
         var listStyleChild = ownerDocument.createElementNS(odf.Namespaces.textns, "text:list-level-style-bullet");
         listStyleChild.setAttributeNS(odf.Namespaces.textns, "text:bullet-char", "•");
@@ -211,10 +226,10 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
         odtDocument.getOdfCanvas().odfContainer().rootElement.automaticStyles.appendChild(listStyle);
 
         if(gui.BulletlistController.session) {
-            var newStyleName = "L1",
+            var newStyleName = newListStyleName,
                 setProperties = {};
 
-            setProperties["style:list-style-name"] = "L1";
+            setProperties["style:list-style-name"] = newListStyleName;
             setProperties["style:list-parent-name"] = "Standard";
 
             op = new ops.OpAddStyle();
@@ -227,6 +242,51 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
             });
             gui.BulletlistController.session.enqueue([op]);
         }
+        listStyleNumber += 1;
+    }
+
+    if(!listStyles['number']) {
+        // create numberedlist style in automaticStyles:
+        newListStyleName = 'L'+ (listStyleNumber + 1);
+        var listStyle = ownerDocument.createElementNS(odf.Namespaces.textns, "text:list-style");
+        listStyle.setAttributeNS(odf.Namespaces.stylens, "style:name", newListStyleName);
+
+        var listStyleChild = ownerDocument.createElementNS(odf.Namespaces.textns, "text:list-level-style-number");
+        listStyleChild.setAttributeNS(odf.Namespaces.stylens, "style:num-format", "1");
+        listStyleChild.setAttributeNS(odf.Namespaces.stylens, "style:num-suffix", ".");
+        listStyleChild.setAttributeNS(odf.Namespaces.textns, "text:level", "1");
+        listStyleChild.setAttributeNS(odf.Namespaces.textns, "text:style-name", "Numbering_20_Symbols");
+        listStyle.appendChild(listStyleChild);
+        var listStyleChildChild = ownerDocument.createElementNS(odf.Namespaces.stylens, "style:list-level-properties");
+        listStyleChildChild.setAttributeNS(odf.Namespaces.textns, "text:list-level-position-and-space-mode", "label-alignment");
+        listStyleChild.appendChild(listStyleChildChild);
+        var listStyleChildChildChild = ownerDocument.createElementNS(odf.Namespaces.stylens, "style:list-level-label-alignment");
+        listStyleChildChildChild.setAttributeNS(odf.Namespaces.fons, "fo:margin-left", "1.27cm");
+        listStyleChildChildChild.setAttributeNS(odf.Namespaces.fons, "fo:text-indent", "-0.635cm");
+        listStyleChildChildChild.setAttributeNS(odf.Namespaces.textns, "text:label-followed-by", "listtab");
+        listStyleChildChildChild.setAttributeNS(odf.Namespaces.textns, "text:list-tab-stop-position", "1.27cm");
+        listStyleChildChild.appendChild(listStyleChildChildChild);
+
+        odtDocument.getOdfCanvas().odfContainer().rootElement.automaticStyles.appendChild(listStyle);
+
+        if(gui.BulletlistController.session) {
+            var newStyleName = newListStyleName,
+                setProperties = {};
+
+            setProperties["style:list-style-name"] = newListStyleName;
+            setProperties["style:list-parent-name"] = "Standard";
+
+            op = new ops.OpAddStyle();
+            op.init({
+                memberid: memberId,
+                styleName: 'P1',
+                styleFamily: 'paragraph',
+                isAutomaticStyle: true,
+                setProperties: setProperties
+            });
+            gui.BulletlistController.session.enqueue([op]);
+        }
+
     }
 
 };
