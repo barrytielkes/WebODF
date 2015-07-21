@@ -103,7 +103,7 @@ gui.SessionControllerOptions = function () {
             hyperlinkClickHandler = new gui.HyperlinkClickHandler(odtDocument.getOdfCanvas().getElement,
                                                                     keyDownHandler, keyUpHandler),
             hyperlinkController = new gui.HyperlinkController(session, sessionConstraints, sessionContext, inputMemberId),
-            bulletlistController = new gui.BulletlistController(session, eventManager, sessionConstraints, sessionContext, inputMemberId),
+            listController = new gui.ListController(session, eventManager, sessionConstraints, sessionContext, inputMemberId),
             selectionController = new gui.SelectionController(session, inputMemberId),
             metadataController = new gui.MetadataController(session, inputMemberId),
             modifier = gui.KeyboardHandler.Modifier,
@@ -1042,10 +1042,10 @@ gui.SessionControllerOptions = function () {
         };
 
         /**
-         * @return {!gui.BulletlistController}
+         * @return {!gui.ListController}
          */
-        this.getBulletlistController = function () {
-            return bulletlistController;
+        this.getListController = function () {
+            return listController;
         };
 
         /**

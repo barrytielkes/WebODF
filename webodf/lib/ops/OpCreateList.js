@@ -28,23 +28,25 @@
  * @constructor
  * @implements ops.Operation
  */
-ops.OpCreateBulletlist = function OpCreateBulletlist() {
+ops.OpCreateList = function OpCreateList() {
     "use strict";
 
     var memberid,
         timestamp,
         position,
         length,
+        listType,
         domUtils = core.DomUtils,
         odfUtils = odf.OdfUtils;
 
     /**
-     * @param {!ops.OpCreateBulletlist.InitSpec} data
+     * @param {!ops.OpCreateList.InitSpec} data
      */
     this.init = function (data) {
         memberid = data.memberid;
         timestamp = data.timestamp;
         position = data.position;
+        listType = data.listType;
     };
 
     this.isEdit = true;
@@ -58,28 +60,80 @@ ops.OpCreateBulletlist = function OpCreateBulletlist() {
         var odtDocument = /**@type{ops.OdtDocument}*/(document),
             ownerDocument = odtDocument.getDOMDocument(),
             range = odtDocument.convertCursorToDomRange(position, 0),
+            styleSheet = /**@type{!CSSStyleSheet}*/(odtDocument.getOdfCanvas().getStyleSheet().sheet),
             /**@type{!Array.<!Element>}*/
             modifiedParagraphs = [],
+            rule,
             textNodes = odfUtils.getTextNodes(range, true);
 
+        // create the automatedStyles:
+        gui.ListController.setDefaultStyle(odtDocument, memberid);
+
+        // get a list of the used styles.
+        var listStyles = gui.ListController.getStyles(odtDocument);
+
+        // check which counter-id to use:
+        // first collect all list elements:
+        var listElements = ownerDocument.querySelectorAll("list");
+        var counterIdList = [];
+
+        // collect current used counter-id values:
+        for (var i = 0; i < listElements.length; i++) {
+            counterIdList.push(listElements[i]['attributes']['counter-id']['nodeValue']);
+        };
+
+        // generate a uniqe number for the counter-id:
+        var counterIdNumber = 1;
+        while(counterIdList.indexOf('X'+ counterIdNumber +'-level1-1') != -1){
+            counterIdNumber++;
+        }
+
+        // create the list dom elements:
         var list = ownerDocument.createElementNS(odf.Namespaces.textns, 'text:list');
         var listItem = ownerDocument.createElementNS(odf.Namespaces.textns, 'text:list-item');
-        list.setAttributeNS(odf.Namespaces.textns, 'text:style-name', 'L1');
-        list.setAttributeNS('urn:webodf:names:helper', 'counter-id', 'X1-level1-1');
+        list.setAttributeNS(odf.Namespaces.textns, 'text:style-name', 'L'+ String(listStyles[listType]));
+        list.setAttributeNS('urn:webodf:names:helper', 'counter-id', 'X'+ String(counterIdNumber) +'-level1-1');
         list.appendChild(listItem);
 
-        if (textNodes.length > 0) { // make bulletpoint from paragraph:
+        if (textNodes.length > 0) { // make list item from paragraph: (when the get list function is called and the cursor is inside a paragraph)
             paragraph = odfUtils.getParagraphElement(textNodes[0]);
             paragraph.parentNode.insertBefore(list, paragraph);
             listItem.appendChild(paragraph);
             if (modifiedParagraphs.indexOf(paragraph) === -1) {
                 modifiedParagraphs.push(paragraph);
             }
-        } else { // create a empty bulletpoint:
+        } else { // create a empty list (when the cursor is in a empty paragraph)
             range.startContainer.parentNode.insertBefore(list, range.startContainer);
             range.startOffset = 0;
             listItem.appendChild(range.startContainer);
         }
+
+        // there should be some link here with the ListStylesToCss > applyListStyles. But i could not get that working.
+        // So i inject css  manuel here:
+        rule = 'text|list[webodfhelper|counter-id=\"X'+ String(counterIdNumber) +'-level1-1\"] > text|list-item:first-child {';
+        rule += '   counter-reset: X'+ String(counterIdNumber) +'-level1-1 1;';
+        rule += '}';
+        styleSheet.insertRule(rule, styleSheet.cssRules.length);
+
+        rule = 'text|list[webodfhelper|counter-id=\"X'+ String(counterIdNumber) +'-level1-1\"] > text|list-item:first-child > *:first-child:not(text|list)::before {';
+        rule += '   counter-increment: X'+ String(counterIdNumber) +'-level1-1 0;';
+        rule += '}';
+        styleSheet.insertRule(rule, styleSheet.cssRules.length);
+
+        rule = 'text|list[webodfhelper|counter-id=\"X'+ String(counterIdNumber) +'-level1-1\"] > text|list-item > :not(text|list):first-child::before';
+        rule += '{';
+        if(listType === 'number') {
+            rule += '   content:   counter(X'+ String(counterIdNumber) +'-level1-1, decimal) \".\";';
+        } else {
+            rule += '   content: "•";';
+        }
+        rule += '   counter-increment: X'+ String(counterIdNumber) +'-level1-1;';
+        rule += '   text-align: left;';
+        rule += '   display: inline-block;';
+        rule += '   margin-left: 0.635cm;';
+        rule += '   padding-right: 0.2cm;';
+        rule += '}';
+        styleSheet.insertRule(rule, styleSheet.cssRules.length);
 
         odtDocument.fixCursorPositions();
         odtDocument.getOdfCanvas().refreshSize();
@@ -92,8 +146,7 @@ ops.OpCreateBulletlist = function OpCreateBulletlist() {
             });
         });
 
-        gui.BulletlistController.setDefaultStyle(odtDocument, memberid);
-
+        // refresh the document:
         var iterator = odtDocument.getIteratorAtPosition(position);
         var paragraphNode = odf.OdfUtils.getParagraphElement(iterator.container());
         if (paragraphNode) {
@@ -110,14 +163,15 @@ ops.OpCreateBulletlist = function OpCreateBulletlist() {
     };
 
     /**
-     * @return {!ops.OpCreateBulletlist.Spec}
+     * @return {!ops.OpCreateList.Spec}
      */
     this.spec = function () {
         return {
-            optype: "CreateBulletlist",
+            optype: "CreateList",
             memberid: memberid,
             timestamp: timestamp,
-            position: position
+            position: position,
+            listType: listType
         };
     };
 };
@@ -125,12 +179,14 @@ ops.OpCreateBulletlist = function OpCreateBulletlist() {
     optype:string,
     memberid:string,
     timestamp:number,
-    position:number
+    position:number,
+    listType:string
 }}*/
-ops.OpCreateBulletlist.Spec;
+ops.OpCreateList.Spec;
 /**@typedef{{
     memberid:string,
     timestamp:(number|undefined),
-    position:number
+    position:number,
+    listType:string
 }}*/
-ops.OpCreateBulletlist.InitSpec;
+ops.OpCreateList.InitSpec;

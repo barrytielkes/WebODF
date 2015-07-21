@@ -100,7 +100,7 @@ ops.OperationFactory = function OperationFactory() {
             RemoveAnnotation: construct(ops.OpRemoveAnnotation),
             UpdateMetadata: construct(ops.OpUpdateMetadata),
             ApplyHyperlink: construct(ops.OpApplyHyperlink),
-            CreateBulletlist: construct(ops.OpCreateBulletlist),
+            CreateList: construct(ops.OpCreateList),
             RemoveHyperlink: construct(ops.OpRemoveHyperlink)
         };
     }

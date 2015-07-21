@@ -78,7 +78,7 @@
     ],
     "gui.BlacklistNamespaceNodeFilter": [
     ],
-    "gui.BulletlistController": [
+    "gui.ListController": [
         "gui.CommonConstraints",
         "gui.SessionConstraints",
         "gui.SessionContext"
@@ -201,7 +201,7 @@
     ],
     "gui.SessionController": [
         "gui.AnnotationController",
-        "gui.BulletlistController",
+        "gui.ListController",
         "gui.Clipboard",
         "gui.DirectFormattingController",
         "gui.HyperlinkClickHandler",
@@ -422,7 +422,7 @@
     "ops.OpApplyHyperlink": [
         "ops.OdtDocument"
     ],
-    "ops.OpCreateBulletlist": [
+    "ops.OpCreateList": [
         "ops.OdtDocument"
     ],
     "ops.OpInsertImage": [
@@ -491,7 +491,7 @@
         "ops.OpAddStyle",
         "ops.OpApplyDirectStyling",
         "ops.OpApplyHyperlink",
-        "ops.OpCreateBulletlist",
+        "ops.OpCreateList",
         "ops.OpInsertImage",
         "ops.OpInsertTable",
         "ops.OpInsertText",

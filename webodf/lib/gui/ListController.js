@@ -34,7 +34,7 @@
  * @param {!gui.SessionContext} sessionContext
  * @param {!string} inputMemberId
  */
-gui.BulletlistController = function BulletlistController(
+gui.ListController = function ListController(
     session,
     eventManager,
     sessionConstraints,
@@ -45,12 +45,12 @@ gui.BulletlistController = function BulletlistController(
     var odfUtils = odf.OdfUtils,
         odtDocument = session.getOdtDocument(),
         eventNotifier = new core.EventNotifier([
-            gui.BulletlistController.enabledChanged
+            gui.ListController.enabledChanged
         ]),
         isEnabled = false;
 
-    gui.BulletlistController.session = session;
-    gui.BulletlistController.memberid = inputMemberId;
+    gui.ListController.session = session;
+    gui.ListController.memberid = inputMemberId;
 
     /**
      * @return {undefined}
@@ -64,7 +64,7 @@ gui.BulletlistController = function BulletlistController(
 
         if (newIsEnabled !== isEnabled) {
             isEnabled = newIsEnabled;
-            eventNotifier.emit(gui.BulletlistController.enabledChanged, isEnabled);
+            eventNotifier.emit(gui.ListController.enabledChanged, isEnabled);
         }
     }
 
@@ -106,8 +106,9 @@ gui.BulletlistController = function BulletlistController(
 
     /**
      * Creates a bulletlist at the current position
+     * @param {!string} listType //should be 'bullet' or 'number'
      */
-    function addBulletlist() {
+    function addList(listType) {
         if(!isEnabled) {
             return
         }
@@ -117,29 +118,29 @@ gui.BulletlistController = function BulletlistController(
         var paragraphStyle = paragraph.getAttributeNS(odf.Namespaces.textns, "style-name") || "";
 
         var operations = [];
-        var op = new ops.OpCreateBulletlist()
+        var op = new ops.OpCreateList();
         op.init({
             memberid:inputMemberId,
             length:selection.length,
-            position:selection.position
+            position:selection.position,
+            listType:listType
         });
         operations.push(op);
         session.enqueue(operations);
-        
         eventManager["focus"]();
 
     }
-    this.addBulletlist = addBulletlist;
+    this.addList = addList;
 
     /**
      * Removes the bulletlist at the current position
      */
-	function removeBulletlist() {
+	function removeList() {
 		if(!isEnabled) {
 			return
 		}
 	}
-	this.removeBulletlist = removeBulletlist;
+	this.removeList = removeList;
 
     /**
      * @param {!function(!Error=)} callback, passing an error object in case of error
@@ -159,35 +160,17 @@ gui.BulletlistController = function BulletlistController(
     init();
 }
 
-/**@const*/gui.BulletlistController.enabledChanged = "enabled/changed";
+/**@const*/gui.ListController.enabledChanged = "enabled/changed";
 
 /**
  * @param {!ops.OdtDocument} odtDocument
- * @param {string|undefined} memberId
+ * @return {Object}
  */
-gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
-
-    var ownerDocument = odtDocument.getDOMDocument();
-    var op;
-    var styleSheet = /**@type{!CSSStyleSheet}*/(odtDocument.getOdfCanvas().getStyleSheet().sheet);
-
-    var rule = 'text|list > text|list-item > :not(text|list):first-child::before';
-    rule += '{';
-    rule += '   content: "•";';
-    rule += '   counter-increment: X1-level1-1 1;';
-    rule += '   text-align: left;';
-    rule += '   display: inline-block;';
-    rule += '   margin-left: 0.635cm;';
-    rule += '   padding-right: 0.2cm;';
-    rule += '}';
-    styleSheet.insertRule(rule, styleSheet.cssRules.length);
-
+gui.ListController.getStyles = function (odtDocument) {
     var styleTree = new odf.StyleTree(odtDocument.getOdfCanvas().odfContainer().rootElement.styles, odtDocument.getOdfCanvas().odfContainer().rootElement.automaticStyles).getStyleTree(),
         lists = /**@type{Array}*/(styleTree["list"]),
         listStyles = {}, // to store whitch styles are there and what there highest number is. number and bullet L1, L2, L3,... So {number: 2, bullet: 1}
-        listStyleNumber,
-        newListStyleName;
-
+        listStyleNumber = 0;
     for(var key in lists) {
         listStyleNumber = Number(key.substr(1));
         var name = /**@type{String}*/(lists[key]['element']['firstChild']['nodeName']);
@@ -197,14 +180,28 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
             listStyles[name] = listStyleNumber;
         }
     }
+    listStyles.currentNumber = listStyleNumber;
+    return listStyles;
+}
+/**
+ * @param {!ops.OdtDocument} odtDocument
+ * @param {string|undefined} memberId
+ */
+gui.ListController.setDefaultStyle = function (odtDocument, memberId) {
+
+    var ownerDocument = odtDocument.getDOMDocument(),
+        op,
+        listStyles,
+        newListStyleName;
 
     if(memberId === undefined) {
         memberId = 'localuser';
     }
 
+    listStyles = gui.ListController.getStyles(odtDocument);
     if(!listStyles['bullet']) {
         // create bulletlist style in automaticStyles:
-        newListStyleName = 'L'+ (listStyleNumber + 1);
+        newListStyleName = 'L'+ String(Number(listStyles['currentNumber']) + 1);
         var listStyle = ownerDocument.createElementNS(odf.Namespaces.textns, "text:list-style");
         listStyle.setAttributeNS(odf.Namespaces.stylens, "style:name", newListStyleName);
 
@@ -225,7 +222,7 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
 
         odtDocument.getOdfCanvas().odfContainer().rootElement.automaticStyles.appendChild(listStyle);
 
-        if(gui.BulletlistController.session) {
+        if(gui.ListController.session) {
             var newStyleName = newListStyleName,
                 setProperties = {};
 
@@ -240,14 +237,14 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
                 isAutomaticStyle: true,
                 setProperties: setProperties
             });
-            gui.BulletlistController.session.enqueue([op]);
+            gui.ListController.session.enqueue([op]);
         }
-        listStyleNumber += 1;
+        listStyles.currentNumber = Number(listStyles['currentNumber']) + 1;
     }
 
     if(!listStyles['number']) {
         // create numberedlist style in automaticStyles:
-        newListStyleName = 'L'+ (listStyleNumber + 1);
+        newListStyleName = 'L'+ String(Number(listStyles['currentNumber']) + 1);
         var listStyle = ownerDocument.createElementNS(odf.Namespaces.textns, "text:list-style");
         listStyle.setAttributeNS(odf.Namespaces.stylens, "style:name", newListStyleName);
 
@@ -269,7 +266,7 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
 
         odtDocument.getOdfCanvas().odfContainer().rootElement.automaticStyles.appendChild(listStyle);
 
-        if(gui.BulletlistController.session) {
+        if(gui.ListController.session) {
             var newStyleName = newListStyleName,
                 setProperties = {};
 
@@ -284,9 +281,10 @@ gui.BulletlistController.setDefaultStyle = function (odtDocument, memberId) {
                 isAutomaticStyle: true,
                 setProperties: setProperties
             });
-            gui.BulletlistController.session.enqueue([op]);
+            gui.ListController.session.enqueue([op]);
         }
 
     }
 
+    listStyles = gui.ListController.getStyles(odtDocument);
 };

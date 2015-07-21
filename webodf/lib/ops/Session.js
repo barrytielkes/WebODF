@@ -158,8 +158,9 @@ ops.Session = function Session(odfCanvas) {
      */
     function init() {
         self.setOperationRouter(new ops.TrivialOperationRouter());
-        
-        gui.BulletlistController.setDefaultStyle(self.getOdtDocument(), undefined);
+
+        // this call is only here because when we open documents with created lists in the wymEditor. WymEditor does not insert automatic styles.
+        gui.ListController.setDefaultStyle(self.getOdtDocument(), undefined);
     }
     init();
 };
